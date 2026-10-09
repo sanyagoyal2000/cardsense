@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import CardChip from '../components/CardChip';
+import UpgradePrompt from '../components/UpgradePrompt';
 import { cards, EXAMPLE_WALLET } from '../data/cards';
+import { getPlan } from '../data/plans';
 import { walletSummary } from '../lib/calc';
 import { approx, inr, num } from '../lib/format';
+import { canAddCard, usePlan } from '../lib/plan';
 import { validatePoints } from '../lib/validate';
 import { useWallet } from '../lib/wallet';
 import PageShell from './PageShell';
@@ -12,6 +15,8 @@ const STACK_HEIGHTS = [160, 130, 100, 70];
 
 export default function Wallet() {
   const [wallet, setWallet] = useWallet();
+  const plan = usePlan();
+  const limit = getPlan(plan).cardLimit;
   const summary = walletSummary(wallet, cards);
   const changes = summary.rows.reduce((n, r) => n + r.card.alerts.filter((a) => a.kind === 'change').length, 0);
   const stack = summary.rows.slice(0, 4);
@@ -23,6 +28,9 @@ export default function Wallet() {
   const [status, setStatus] = useState('');
   const check = validatePoints(points);
   const showError = submitted && !check.ok;
+  const isUpdate = wallet.some((w) => w.cardId === cardId);
+  const atLimit = !canAddCard(plan, wallet.length);
+  const [limitHit, setLimitHit] = useState(false);
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -30,6 +38,11 @@ export default function Wallet() {
     if (!check.ok) return;
     const card = cards.find((c) => c.id === cardId)!;
     const exists = wallet.some((w) => w.cardId === cardId);
+    if (!exists && atLimit) {
+      setLimitHit(true);
+      return;
+    }
+    setLimitHit(false);
     setWallet((w) =>
       exists ? w.map((x) => (x.cardId === cardId ? { ...x, points: check.value } : x)) : [...w, { cardId, points: check.value }],
     );
@@ -180,8 +193,15 @@ export default function Wallet() {
             )}
           </div>
           <button type="submit" className="btn btn-primary">
-            {wallet.some((w) => w.cardId === cardId) ? 'Update balance' : 'Add to wallet'}
+            {isUpdate ? 'Update balance' : 'Add to wallet'}
           </button>
+          {atLimit && (limitHit || wallet.length > limit) && (
+            <UpgradePrompt plan={plan === 'free' ? 'Plus' : 'Premium'}>
+              {wallet.length > limit
+                ? `Your ${getPlan(plan).name} plan tracks ${limit} ${limit === 1 ? 'card' : 'cards'}; you have ${wallet.length}. You can update balances, but adding a card needs an upgrade.`
+                : `Your ${getPlan(plan).name} plan tracks ${limit} ${limit === 1 ? 'card' : 'cards'}. Upgrade to add more.`}
+            </UpgradePrompt>
+          )}
           <p className="sr-only" role="status">
             {status}
           </p>

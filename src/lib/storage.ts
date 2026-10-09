@@ -10,6 +10,13 @@ export const KEYS = {
   alertPrefs: 'alertPrefs',
   surveyDraft: 'surveyDraft',
   surveyResponses: 'surveyResponses',
+  plan: 'plan',
+  planSaves: 'planSaves',
+  communityPosts: 'communityPosts',
+  communityReplies: 'communityReplies',
+  communityVotes: 'communityVotes',
+  pollVotes: 'pollVotes',
+  bookings: 'bookings',
 } as const;
 
 export function load<T>(key: string, fallback: T, isValid?: (v: unknown) => v is T): T {

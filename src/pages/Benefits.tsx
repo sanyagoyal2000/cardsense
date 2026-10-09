@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import AlertCard from '../components/AlertCard';
 import MilestoneCard, { type MilestoneState } from '../components/MilestoneCard';
+import UpgradePrompt from '../components/UpgradePrompt';
 import { cards, type AlertCategory, type Card } from '../data/cards';
 import { milestoneProgress } from '../lib/calc';
 import { inr, num } from '../lib/format';
 import { isObject, KEYS, useStored } from '../lib/storage';
+import { hasPlus, usePlan } from '../lib/plan';
 import { validateRupees } from '../lib/validate';
 import { useWallet } from '../lib/wallet';
 import PageShell from './PageShell';
@@ -40,6 +42,7 @@ export default function Benefits() {
   const [milestones, setMilestones] = useStored<Record<string, MilestoneState>>(KEYS.milestones, {}, isMilestoneMap);
   const [prefs, setPrefs] = useStored<Prefs>(KEYS.alertPrefs, DEFAULT_PREFS, isPrefs);
   const today = new Date();
+  const plus = hasPlus(usePlan());
 
   const mine = cards.filter((c) => wallet.some((w) => w.cardId === c.id));
   const others = cards.filter((c) => !mine.includes(c));
@@ -70,7 +73,7 @@ export default function Benefits() {
           </div>
           <div className="hero-stats">
             <div>
-              <div className="stat-big">{inr(atRisk)}</div>
+              <div className="stat-big">{plus ? inr(atRisk) : '—'}</div>
               <div className="stat-small">milestone value at risk</div>
             </div>
             <div>
@@ -82,7 +85,11 @@ export default function Benefits() {
       }
     >
       <div className="container benefits-body">
-        {tracked.length === 0 ? (
+        {!plus ? (
+          <UpgradePrompt>
+            Milestone tracking and expiry alerts are part of Plus. On Free you still see rule changes on your cards below.
+          </UpgradePrompt>
+        ) : tracked.length === 0 ? (
           <div className="panel notice">
             <h2>No milestones to track</h2>
             <p className="muted">
@@ -127,6 +134,7 @@ export default function Benefits() {
           </details>
         )}
 
+        {plus && (
         <fieldset className="panel prefs">
           <legend className="sr-only">Alert preferences</legend>
           <b aria-hidden="true">Alert me about</b>
@@ -142,6 +150,7 @@ export default function Benefits() {
           ))}
           <span className="field-hint prefs-note">Saved on this device. CardSense doesn’t send notifications yet.</span>
         </fieldset>
+        )}
       </div>
     </PageShell>
   );

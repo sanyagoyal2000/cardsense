@@ -233,6 +233,71 @@ button {
 .header-cta {
   margin-left: auto;
 }
+.plan-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--ink-line);
+  color: var(--muted-dark);
+}
+.plan-badge:hover {
+  color: #fff;
+}
+.plan-badge.plan-plus,
+.plan-badge.plan-premium {
+  border-color: var(--lime);
+  color: var(--lime);
+}
+
+/* Upgrade prompt: lime outline, never blocking */
+.upgrade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+  justify-content: space-between;
+  border: 2px solid var(--lime);
+  background: #fafbf2;
+  color: var(--ink);
+  padding: 12px 16px;
+  font-size: 14px;
+}
+.dark .upgrade,
+.upgrade.upgrade-inline {
+  background: transparent;
+  color: var(--body-dark);
+}
+.upgrade-link {
+  font-weight: 800;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.dark .upgrade-link {
+  color: var(--lime);
+}
+
+/* Round avatars */
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 99px;
+  flex: none;
+  display: block;
+}
+.avatar.sm {
+  width: 26px;
+  height: 26px;
+}
+.avatar-photo {
+  object-fit: cover;
+  object-position: center 20%;
+}
 
 /* ---------- Buttons ---------- */
 .btn {
@@ -375,6 +440,10 @@ button {
   background: var(--good-bg);
   color: var(--good);
 }
+.chip-neutral {
+  background: var(--page);
+  color: var(--body-light);
+}
 
 /* ---------- Forms ---------- */
 .field {
@@ -419,6 +488,21 @@ button {
 .field-hint {
   color: var(--muted-dark);
   font-size: 12px;
+}
+.field-error.on-light {
+  color: var(--danger);
+}
+/* Light input for forms on white panels */
+.input.input-light {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.input.input-light[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+.input-light::placeholder {
+  color: var(--muted);
 }
 
 /* ---------- Progress ---------- */
@@ -542,6 +626,15 @@ button {
   }
   .nav a {
     white-space: nowrap;
+  }
+}
+
+@media (min-width: 861px) and (max-width: 1180px) {
+  .site-header .nav {
+    margin-left: 8px;
+  }
+  .site-header .nav a {
+    padding: 8px 9px;
   }
 }
 

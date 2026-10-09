@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Pill from '../components/Pill';
 import RouteCard from '../components/RouteCard';
+import UpgradePrompt from '../components/UpgradePrompt';
 import { cards, getCard, GOAL_LABELS, LAST_CHECKED, type Goal } from '../data/cards';
 import { rankRoutes, recommend } from '../lib/calc';
 import { approx, inr, num } from '../lib/format';
 import { isObject, KEYS, useStored } from '../lib/storage';
+import { canAddCard, canSaveRedemptionPlan, hasPlus, monthKey, usePlan } from '../lib/plan';
 import { validatePoints } from '../lib/validate';
 import { useWallet } from '../lib/wallet';
 import PageShell from './PageShell';
@@ -42,7 +44,11 @@ export default function Redeem() {
     isRedeemState,
   );
   const [choices, setChoices] = useStored<Record<string, string>>(KEYS.routeChoices, {}, isChoices);
+  const [saves, setSaves] = useStored<Record<string, string>>(KEYS.planSaves, {}, isChoices);
   const [touched, setTouched] = useState(false);
+  const [planLimitHit, setPlanLimitHit] = useState(false);
+  const plan = usePlan();
+  const plus = hasPlus(plan);
 
   // ?card=<id> from the wallet "Compare" button
   const paramCard = params.get('card');
@@ -61,11 +67,32 @@ export default function Redeem() {
 
   const ranked = useMemo(() => rankRoutes(card.routes, balance), [card, balance]);
   const rec = check.ok ? recommend(card.routes, balance, state.goal) : null;
-  const ordered = rec ? [rec.pick, ...ranked.filter((r) => r.route.id !== rec.pick.route.id)] : ranked;
+  // The personalised pick is a Plus feature; Free sees plain ranking.
+  const ordered = rec && plus ? [rec.pick, ...ranked.filter((r) => r.route.id !== rec.pick.route.id)] : ranked;
   const maxPerPoint = Math.max(0, ...ranked.map((r) => r.perPoint));
   const chosenId = choices[card.id];
   const chosen = ranked.find((r) => r.route.id === chosenId);
   const savedBalance = walletPoints(card.id);
+  const walletFull = savedBalance === undefined && !canAddCard(plan, wallet.length);
+
+  const toggleChoice = (routeId: string) => {
+    if (choices[card.id] === routeId) {
+      setChoices((c) => {
+        const next = { ...c };
+        delete next[card.id];
+        return next;
+      });
+      return;
+    }
+    const month = monthKey(new Date());
+    if (!canSaveRedemptionPlan(plan, saves, card.id, month)) {
+      setPlanLimitHit(true);
+      return;
+    }
+    setPlanLimitHit(false);
+    setChoices((c) => ({ ...c, [card.id]: routeId }));
+    setSaves((s) => ({ ...s, [card.id]: month }));
+  };
 
   const changeCard = (id: string) => {
     const p = walletPoints(id);
@@ -133,10 +160,15 @@ export default function Redeem() {
               {check.error}
             </span>
           )}
-          {check.ok && savedBalance !== check.value && card.routes.length > 0 && (
+          {check.ok && savedBalance !== check.value && card.routes.length > 0 && !walletFull && (
             <button type="button" className="text-btn" onClick={saveToWallet}>
               {savedBalance === undefined ? 'Add this card to my wallet' : 'Save this balance to my wallet'}
             </button>
+          )}
+          {check.ok && card.routes.length > 0 && walletFull && (
+            <UpgradePrompt plan={plan === 'free' ? 'Plus' : 'Premium'} className="upgrade-inline">
+              Your wallet is full on this plan, so this card can’t be added.
+            </UpgradePrompt>
           )}
         </div>
       }
@@ -158,6 +190,17 @@ export default function Redeem() {
           </div>
         ) : (
           <>
+            {!plus ? (
+              <div className="rec-bar is-locked">
+                <span className="rec-label">Recommended</span>
+                <span className="rec-blur" aria-hidden="true">
+                  <b>Your best route</b>: the highest ₹ for your goal, what to redeem now and what to keep for next month.
+                </span>
+                <Link to="/plans" className="rec-unlock">
+                  Unlock with Plus →
+                </Link>
+              </div>
+            ) : (
             <div className="rec-bar" role="status">
               <span className="rec-label">Recommended</span>
               {rec ? (
@@ -171,15 +214,17 @@ export default function Redeem() {
                 </span>
               )}
             </div>
+            )}
 
             <div className="route-grid">
               {ordered.map((r) => (
                 <RouteCard
                   key={r.route.id}
                   result={r}
-                  featured={rec?.pick.route.id === r.route.id}
+                  featured={plus && rec?.pick.route.id === r.route.id}
+                  lockConditions={!plus}
                   badge={
-                    rec?.pick.route.id === r.route.id
+                    plus && rec?.pick.route.id === r.route.id
                       ? rec.fallback
                         ? 'Best overall'
                         : `Best for ${GOAL_LABELS[state.goal].toLowerCase()}`
@@ -198,14 +243,7 @@ export default function Redeem() {
                   <Pill
                     key={r.route.id}
                     pressed={chosenId === r.route.id}
-                    onClick={() =>
-                      setChoices((c) => {
-                        const next = { ...c };
-                        if (next[card.id] === r.route.id) delete next[card.id];
-                        else next[card.id] = r.route.id;
-                        return next;
-                      })
-                    }
+                    onClick={() => toggleChoice(r.route.id)}
                   >
                     {r.route.shortName}
                   </Pill>
@@ -216,6 +254,11 @@ export default function Redeem() {
                   ? `Saved: ${chosen.route.shortName}, ${chosen.eligible ? `${approx(chosen.route.estimate)}${inr(chosen.rupeeValue)}` : 'not eligible yet'}.`
                   : ''}
               </span>
+              {planLimitHit && (
+                <UpgradePrompt className="choose-upgrade">
+                  The Free plan saves one redemption plan a month. Upgrade to Plus for unlimited plans.
+                </UpgradePrompt>
+              )}
             </div>
           </>
         )}

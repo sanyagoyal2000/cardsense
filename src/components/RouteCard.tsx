@@ -1,5 +1,6 @@
 import type { RouteResult } from '../lib/calc';
 import { approx, inr, num, perPoint } from '../lib/format';
+import { Link } from 'react-router-dom';
 import ProgressBar from './ProgressBar';
 import SourceLine from './SourceLine';
 
@@ -12,6 +13,8 @@ interface Props {
   maxPerPoint: number;
   /** Cash route that loses value against the best route. */
   cashLoss?: boolean;
+  /** Free plan: hide caps and exclusions behind an upgrade link. */
+  lockConditions?: boolean;
 }
 
 /** Rate as shown in formulas: 2 to 3 decimals so 14,000/24,000 reads ₹0.583. */
@@ -34,7 +37,7 @@ export function formulaLines(r: RouteResult): string[] {
   return lines;
 }
 
-export default function RouteCard({ result, badge, featured = false, maxPerPoint, cashLoss = false }: Props) {
+export default function RouteCard({ result, badge, featured = false, maxPerPoint, cashLoss = false, lockConditions = false }: Props) {
   const { route, eligible } = result;
   const est = approx(route.estimate);
   const barPct = maxPerPoint > 0 ? (result.perPoint / maxPerPoint) * 100 : 0;
@@ -65,7 +68,13 @@ export default function RouteCard({ result, badge, featured = false, maxPerPoint
       <ProgressBar percent={eligible ? barPct : 0} tone={tone} label={`${route.name} value compared with the best route`} />
       <p className="route-conditions">
         {!eligible && result.ineligibleReason ? <b>{result.ineligibleReason} </b> : null}
-        {route.conditions}
+        {lockConditions ? (
+          <Link to="/plans" className="locked-conditions">
+            Hidden caps and exclusions: unlock with Plus →
+          </Link>
+        ) : (
+          route.conditions
+        )}
       </p>
       <details className="route-calc" open={featured}>
         <summary>How this is calculated</summary>
